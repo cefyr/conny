@@ -1,8 +1,8 @@
 #!/bin/bash
 # Conny is a halpful internet connection script for people with no expectations
 
-WIFI_INTERFACE='wlp1s0'
-WIRED_INTERFACE='enp3s0'
+WIFI_INTERFACE="$(ls /sys/class/net/ | grep ^w)"
+WIRED_INTERFACE="$(ls /sys/class/net/ | grep ^e)"
 USR="$(who | awk '{print $1}')"
 CFG_PATH="/home/$USR/.config"
 DEFAULT_WIFI="$(grep ssid $CFG_PATH/wpa_supplicant.conf)"

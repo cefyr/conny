@@ -3,7 +3,7 @@
 
 WIFI_INTERFACE='wlp1s0'
 WIRED_INTERFACE='enp3s0'
-USR='cai'
+USR="$(who | awk '{print $1}')"
 CFG_PATH="/home/$USR/.config"
 DEFAULT_WIFI="$(grep ssid $CFG_PATH/wpa_supplicant.conf)"
 DEFAULT_IP='192.168.1.111/24'

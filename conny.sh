@@ -6,32 +6,65 @@ WIRED_INTERFACE="$(ls /sys/class/net/ | grep ^e)"
 USR="$(who | awk '{print $1}')"
 
 CONNY_CFG_FILE="/home/$USR/.config/conny.conf"
-DEFAULT_WIFI="$(grep ssid $CFG_PATH/wpa_supplicant.conf)"
 
 # Config file comes to the rescue!
-DEFCON_METHOD="$(grep '^DEFCON_METHOD' $CONNY_CFG_FILE 2>/dev/null | awk -F'=' '{print $2}')"
-DEF_CFG_PATH="$(grep '^DEF_CFG_PATH' $CONNY_CFG_FILE 2>/dev/null | awk -F'=' '{print $2}')"
-DEFAULT_TO_DHCP="$(grep '^DEFAULT_TO_DHCP' $CONNY_CFG_FILE 2>/dev/null | awk -F'=' '{print $2}')"
-DEFAULT_IP="$(grep '^DEFAULT_IP' $CONNY_CFG_FILE 2>/dev/null | awk -F'=' '{print $2}')"
-DEFAULT_ROUTE="$(grep '^DEFAULT_ROUTE' $CONNY_CFG_FILE 2>/dev/null | awk -F'=' '{print $2}')"
+DEFCON_METHOD="$(grep '^DEFCON_METHOD' $CONNY_CFG_FILE 2>/dev/null \
+    | awk -F'=' '{print $2}' | sed "s/^\(\"\)\(.*\)\1\$/\2/g")"
+DEF_CFG_PATH="$(grep '^DEF_CFG_PATH' $CONNY_CFG_FILE 2>/dev/null \
+    | awk -F'=' '{print $2}' | sed "s/^\(\"\)\(.*\)\1\$/\2/g")"
+DEFAULT_TO_DHCP="$(grep '^DEFAULT_TO_DHCP' $CONNY_CFG_FILE 2>/dev/null \
+    | awk -F'=' '{print $2}' | sed "s/^\(\"\)\(.*\)\1\$/\2/g")"
+DEFAULT_IP="$(grep '^DEFAULT_IP' $CONNY_CFG_FILE 2>/dev/null \
+    | awk -F'=' '{print $2}' | sed "s/^\(\"\)\(.*\)\1\$/\2/g")"
+DEFAULT_ROUTE="$(grep '^DEFAULT_ROUTE' $CONNY_CFG_FILE 2>/dev/null \
+    | awk -F'=' '{print $2}' | sed "s/^\(\"\)\(.*\)\1\$/\2/g")"
+
+# Remove potential quotes from config data
+#sed -n "s/^\(\"\)\(.*\)\1\$/\2/g" <<<"$DEFCON_METHOD"
+#sed "s/^\(\"\)\(.*\)\1\$/\2/g" <<<"$DEF_CFG_PATH"
+#sed -n "s/^\(\"\)\(.*\)\1\$/\2/g" <<<"$DEFAULT_TO_DHCP"
+#sed -n "s/^\(\"\)\(.*\)\1\$/\2/g" <<<"$DEFAULT_IP"
+#sed -n "s/^\(\"\)\(.*\)\1\$/\2/g" <<<"$DEFAULT_ROUTE"
+
+#TODO Figure out how to make the expandy faces on DEF_CFG_PATH so it doesn't 
+# try to literally use "/home/$USR/.config/wpa_supplicant.conf" as a real path
+DEFAULT_WIFI="$(grep ssid $DEF_CFG_PATH/wpa_supplicant.conf 2>/dev/null)"
+test -z "$DEFAULT_WIFI" && echo "$DEF_CFG_PATH/wpa_supplicant.conf doesn't seem to exist."
+
+# Test that config file exists
+test -z "$CONNY_CFG_FILE" && echo "FAILPOTATO: No file at $CONNY_CFG_FILE"
 
 # Test that config values exist
-if [ -z $DEFCON_METHOD ]; then
-    DEFCON_METHOD='wifi'
-fi
-case $DEFCON_METHOD in
-    wired|wifi) 
+test -z "$DEFCON_METHOD" && DEFCON_METHOD="wifi"
+case "$DEFCON_METHOD" in
+    wired)
+        MY_INTERFACE="$WIRED_INTERFACE"
+        ;;
+    wifi)
+        MY_INTERFACE="$WIFI_INTERFACE"
         ;;
     *)
-        echo 'FAILPOTATO: Incorrect connection method in config'
+        echo "FAILPOTATO: Incorrect connection method $DEFCON_METHOD in config"
         exit 1
         ;;
 esac
 
-if [ -z $DEFAULT_TO_DHCP ]; then
-    DEFCON_METHOD='1'
-fi
-case $DEFCON_METHOD in
+#if [ "$DEFCON_METHOD" = "wired" ]; then
+#    MY_INTERFACE="$WIRED_INTERFACE"
+#    echo "Connection method: $DEFCON_METHOD, interface: $MY_INTERFACE"
+#else
+#    if [ "$DEFCON_METHOD" = "wifi" ]; then
+#        MY_INTERFACE="$WIFI_INTERFACE"
+#    else
+#        echo "FAILPOTATO: Incorrect connection method $DEFCON_METHOD in config"
+#        exit 1
+#    fi
+#fi
+
+echo "Connection method: $DEFCON_METHOD, interface: $MY_INTERFACE"
+test -z "$DEFAULT_TO_DHCP" && DEFAULT_TO_DHCP="1"
+
+case "$DEFAULT_TO_DHCP" in
     [01]) 
         ;;
     *)
@@ -45,10 +78,16 @@ esac
 #DEFAULT_IP='192.168.1.222/24'
 #DEFAULT_ROUTE='192.168.1.1'
 
+echo "Testing connection method: $DEFCON_METHOD"
 echo "Testing DHCP: $DEFAULT_TO_DHCP"
 echo "Testing IP: $DEFAULT_IP"
 echo "Testing route: $DEFAULT_ROUTE"
 echo "Testing cfg path: $DEF_CFG_PATH"
+echo "Wifi interface: $WIFI_INTERFACE"
+echo "Wired interface: $WIRED_INTERFACE"
+echo "Default interface: $MY_INTERFACE"
+
+test -e "$DEF_CFG_PATH/conny.conf" && echo "$DEF_CFG_PATH seems to work"
 
 echo 'NOTE: Conny only connects, no disconnecting here :)'
 echo 'Pinging googles to check for interwebs...' 
@@ -59,11 +98,12 @@ read USE_DEFCON_METHOD
 test -z "$USE_DEFCON_METHOD" && USE_DEFCON_METHOD=y
 case "$USE_DEFCON_METHOD" in
     [Yy])
-        if [ "$DEFCON_METHOD"="wifi" ]; then
-            MY_INTERFACE="$WIFI_INTERFACE"
-        else
-            MY_INTERFACE="$WIRED_INTERFACE"
-        fi
+#        if [ "$DEFCON_METHOD"="wifi" ]; then
+#            MY_INTERFACE="$WIFI_INTERFACE"
+#        else
+#            MY_INTERFACE="$WIRED_INTERFACE"
+#        fi
+        echo "Using default connection method $DEFCON_METHOD"
         ;;
     [Nn])
         if [ "$DEFCON_METHOD"="wired" ]; then
@@ -88,7 +128,7 @@ if [ "$MY_INTERFACE"="$WIFI_INTERFACE" ] ; then
     read WPA_CONFIG
     if [ -z $WPA_CONFIG ]; then
         echo "Running wpa_supplicant for $WPA_CONFIG..."
-        wpa_supplicant -B -D nl80211,wext -i "$WIFI_INTERFACE" -c "$CFG_PATH/wpa_supplicant.conf"
+        wpa_supplicant -B -D nl80211,wext -i "$WIFI_INTERFACE" -c "$DEF_CFG_PATH/wpa_supplicant.conf"
     else
         if [ "$WPA_CONFIG" = "?" ]; then
             echo -n 'Enter SSID of open network: '
@@ -98,11 +138,11 @@ if [ "$MY_INTERFACE"="$WIFI_INTERFACE" ] ; then
                 || echo "FAILPOTATO: $WIFI_INTERFACE could not connect to $OPEN_SSID" && exit 1
         else
             # Try wpa_supplicant on everything that stands still long enough
-            if [ -e "$CFG_PATH/wpa_$WPA_CONFIG.conf" ]; then
+            if [ -e "$DEF_CFG_PATH/wpa_$WPA_CONFIG.conf" ]; then
                 echo "Running wpa_supplicant for $WPA_CONFIG..."
-                wpa_supplicant -B -D nl80211,wext -i "$WIFI_INTERFACE" -c "$CFG_PATH/wpa_$WPA_CONFIG.conf"
+                wpa_supplicant -B -D nl80211,wext -i "$WIFI_INTERFACE" -c "$DEF_CFG_PATH/wpa_$WPA_CONFIG.conf"
             else
-                echo "FAILPOTATO: $CFG_PATH/wpa_$WPA_CONFIG.conf might not be valid config file"
+                echo "FAILPOTATO: $DEF_CFG_PATH/wpa_$WPA_CONFIG.conf might not be valid config file"
                 exit 1
             fi
         fi

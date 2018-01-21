@@ -107,9 +107,9 @@ case "$USE_DEFCON_METHOD" in
         ;;
     [Nn])
         if [ "$DEFCON_METHOD"="wired" ]; then
-            MY_INTERFACE="$WIRED_INTERFACE"
-        else
             MY_INTERFACE="$WIFI_INTERFACE"
+        else
+            MY_INTERFACE="$WIRED_INTERFACE"
         fi
         ;;
     *)
@@ -123,7 +123,7 @@ ip link set "$MY_INTERFACE" up
 # SSID and WPA
 #NOTE Possible patch for bash tab completion in scripts:
 # https://stackoverflow.com/questions/4726695/bash-and-readline-tab-completion-in-a-user-input-loop
-if [ "$MY_INTERFACE"="$WIFI_INTERFACE" ] ; then
+if [ "$MY_INTERFACE" = "$WIFI_INTERFACE" ] ; then
     echo -en "Enter wpa config name\n'?' for open wifi\ndefault: $DEFAULT_WIFI: "
     read WPA_CONFIG
     if [ -z $WPA_CONFIG ]; then
